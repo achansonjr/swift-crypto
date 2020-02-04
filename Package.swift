@@ -33,13 +33,15 @@ let swiftSettings: [SwiftSetting] = [
 let package = Package(
     name: "swift-crypto",
     platforms: [
-        .macOS(.v10_15),
+        .macOS(.v10_14),
         .iOS(.v13),
         .watchOS(.v6),
         .tvOS(.v13),
     ],
     products: [
         .library(name: "Crypto", targets: ["Crypto"]),
+        .library(name: "CCryptoBoringSSL", type: .static, targets: ["CCryptoBoringSSL"]),
+        .library(name: "CCryptoBoringSSLShims", type: .static, targets: ["CCryptoBoringSSLShims"]),
         /* This target is used only for symbol mangling. It's added and removed automatically because it emits build warnings. MANGLE_START
             .library(name: "CCryptoBoringSSL", type: .static, targets: ["CCryptoBoringSSL"]),
             MANGLE_END */
