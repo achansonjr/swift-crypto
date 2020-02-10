@@ -40,6 +40,7 @@ let package = Package(
     ],
     products: [
         .library(name: "Crypto", targets: ["Crypto"]),
+        .library(name: "ServerCrypto", targets: ["ServerCrypto"]),
         /* This target is used only for symbol mangling. It's added and removed automatically because it emits build warnings. MANGLE_START
             .library(name: "CCryptoBoringSSL", type: .static, targets: ["CCryptoBoringSSL"]),
             MANGLE_END */
@@ -49,6 +50,7 @@ let package = Package(
         .target(name: "CCryptoBoringSSL"),
         .target(name: "CCryptoBoringSSLShims", dependencies: ["CCryptoBoringSSL"]),
         .target(name: "Crypto", dependencies: ["CCryptoBoringSSL", "CCryptoBoringSSLShims"], swiftSettings: swiftSettings),
+        .target(name: "ServerCrypto", dependencies: ["Crypto", "CCryptoBoringSSL", "CCryptoBoringSSLShims"], swiftSettings: swiftSettings),
         .target(name: "crypto-shasum", dependencies: ["Crypto"]),
         .testTarget(name: "CryptoTests", dependencies: ["Crypto"], swiftSettings: swiftSettings),
     ],

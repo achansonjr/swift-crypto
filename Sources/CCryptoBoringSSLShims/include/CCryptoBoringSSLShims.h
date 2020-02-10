@@ -90,4 +90,13 @@ BIGNUM *CCryptoBoringSSLShims_BN_bin2bn(const void *in, size_t len, BIGNUM *ret)
 
 size_t CCryptoBoringSSLShims_BN_bn2bin(const BIGNUM *in, void *out);
 
+GENERAL_NAME *CCryptoBoringSSLShims_sk_GENERAL_NAME_value(const STACK_OF(GENERAL_NAME) *sk, size_t i);
+size_t CCryptoBoringSSLShims_sk_GENERAL_NAME_num(const STACK_OF(GENERAL_NAME) *sk);
+
+void *CCryptoBoringSSLShims_SSL_CTX_get_app_data(const SSL_CTX *ctx);
+int CCryptoBoringSSLShims_SSL_CTX_set_app_data(SSL_CTX *ctx, void *data);
+
+int CCryptoBoringSSLShims_ERR_GET_LIB(uint32_t err);
+int CCryptoBoringSSLShims_ERR_GET_REASON(uint32_t err);
+
 #endif  // C_CRYPTO_BORINGSSL_SHIMS_H
