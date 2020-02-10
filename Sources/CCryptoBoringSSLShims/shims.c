@@ -119,13 +119,6 @@ size_t CCryptoBoringSSLShims_sk_GENERAL_NAME_num(const STACK_OF(GENERAL_NAME) *s
     return sk_GENERAL_NAME_num(sk);
 }
 
-void *CCryptoBoringSSLShims_SSL_CTX_get_app_data(const SSL_CTX *ctx) {
-    return SSL_CTX_get_app_data(ctx);
-}
-
-int CCryptoBoringSSLShims_SSL_CTX_set_app_data(SSL_CTX *ctx, void *data) {
-    return SSL_CTX_set_app_data(ctx, data);
-}
 
 int CCryptoBoringSSLShims_ERR_GET_LIB(uint32_t err) {
   return ERR_GET_LIB(err);

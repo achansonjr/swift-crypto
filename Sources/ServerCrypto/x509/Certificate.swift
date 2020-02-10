@@ -20,6 +20,7 @@ import CCryptoBoringSSL
 import CCryptoBoringSSLShims
 #endif
 import Crypto
+import Foundation
 
 /// Wraps a single error from BoringSSL.
 public struct BoringSSLInternalError: Equatable, CustomStringConvertible {
@@ -179,6 +180,29 @@ public enum CryptoSerializationFormats {
     case der
 }
 
+private func foo<C: ContiguousBytes>(bytes: C, format: CryptoSerializationFormats) throws -> UnsafeMutablePointer<X509>? {
+  let ref = bytes.withUnsafeBytes { (ptr) -> UnsafeMutablePointer<X509>? in
+    let bio = CCryptoBoringSSL_BIO_new_mem_buf(ptr.baseAddress, CInt(ptr.count))!
+
+    defer {
+      CCryptoBoringSSL_BIO_free(bio)
+    }
+
+    switch format {
+    case .pem:
+      return CCryptoBoringSSL_PEM_read_bio_X509(bio, nil, nil, nil)
+    case .der:
+      return CCryptoBoringSSL_d2i_X509_bio(bio, nil)
+    }
+  }
+
+  if ref == nil {
+    throw CryptoCertificateError.failedToLoadCertificate
+  }
+
+  return ref
+}
+
 /// A reference to a BoringSSL Certificate object (`X509 *`).
 ///
 /// This thin wrapper class allows us to use ARC to automatically manage
@@ -195,12 +219,12 @@ public class Certificate {
         return self._ref.assumingMemoryBound(to: X509.self)
     }
 
-    internal enum AlternativeName {
+    public enum AlternativeName {
         case dnsName([UInt8])
         case ipAddress(IPAddress)
     }
 
-    internal enum IPAddress {
+    public enum IPAddress {
         case ipv4(in_addr)
         case ipv6(in6_addr)
     }
@@ -214,57 +238,16 @@ public class Certificate {
     ///
     /// Note that this method will only ever load the first certificate from a given file.
     public convenience init(file: String, format: CryptoSerializationFormats) throws {
-        let fileObject = try Posix.fopen(file: file, mode: "rb")
-        defer {
-            fclose(fileObject)
-        }
-
-        let x509: UnsafeMutablePointer<X509>?
-        switch format {
-        case .pem:
-            x509 = CCryptoBoringSSL_PEM_read_X509(fileObject, nil, nil, nil)
-        case .der:
-            x509 = CCryptoBoringSSL_d2i_X509_fp(fileObject, nil)
-        }
-
-        if x509 == nil {
-            throw CryptoCertificateError.failedToLoadCertificate
-        }
-
-        self.init(withOwnedReference: x509!)
-    }
-
-    /// Create a Certificate from a buffer of bytes in either PEM or
-    /// DER format.
-    ///
-    /// - SeeAlso: `Certificate.init(bytes:format:)`
-    @available(*, deprecated, renamed: "Certificate.init(bytes:format:)")
-    public convenience init(buffer: [Int8], format: CryptoSerializationFormats) throws  {
-        try self.init(bytes: buffer.map(UInt8.init), format: format)
+      let url = URL(fileURLWithPath: file)
+      let data = try Data(contentsOf: url)
+      let ref = try foo(bytes: data, format: format)
+      self.init(withOwnedReference: ref!)
     }
 
     /// Create a Certificate from a buffer of bytes in either PEM or
     /// DER format.
     public convenience init(bytes: [UInt8], format: CryptoSerializationFormats) throws {
-        let ref = bytes.withUnsafeBytes { (ptr) -> UnsafeMutablePointer<X509>? in
-            let bio = CCryptoBoringSSL_BIO_new_mem_buf(ptr.baseAddress, CInt(ptr.count))!
-
-            defer {
-                CCryptoBoringSSL_BIO_free(bio)
-            }
-
-            switch format {
-            case .pem:
-                return CCryptoBoringSSL_PEM_read_bio_X509(bio, nil, nil, nil)
-            case .der:
-                return CCryptoBoringSSL_d2i_X509_bio(bio, nil)
-            }
-        }
-
-        if ref == nil {
-            throw CryptoCertificateError.failedToLoadCertificate
-        }
-
+      let ref = try foo(bytes: bytes, format: format)
         self.init(withOwnedReference: ref!)
     }
 
@@ -297,22 +280,8 @@ public class Certificate {
         self.init(withOwnedReference: ref!)
     }
 
-    /// Create a Certificate wrapping a pointer into BoringSSL.
-    ///
-    /// This is a function that should be avoided as much as possible because it plays poorly with
-    /// BoringSSL's reference-counted memory. This function does not increment the reference count for the `X509`
-    /// object here, nor does it duplicate it: it just takes ownership of the copy here. This object
-    /// **will** deallocate the underlying `X509` object when deinited, and so if you need to keep that
-    /// `X509` object alive you should call `X509_dup` before passing the pointer here.
-    ///
-    /// In general, however, this function should be avoided in favour of one of the convenience
-    /// initializers, which ensure that the lifetime of the `X509` object is better-managed.
-    static func fromUnsafePointer(takingOwnership pointer: UnsafeMutablePointer<X509>) -> Certificate {
-        return Certificate(withOwnedReference: pointer)
-    }
-
     /// Get a sequence of the alternative names in the certificate.
-    internal func subjectAlternativeNames() -> SubjectAltNameSequence? {
+    public func subjectAlternativeNames() -> SubjectAltNameSequence? {
         guard let sanExtension = CCryptoBoringSSL_X509_get_ext_d2i(self.ref, NID_subject_alt_name, nil, nil) else {
             return nil
         }
@@ -324,7 +293,7 @@ public class Certificate {
     /// It is technically possible to have multiple common names in a certificate. As the primary
     /// purpose of this field in SwiftNIO is to validate TLS certificates, we only ever return
     /// the *most significant* (i.e. last) instance of commonName in the subject.
-    internal func commonName() -> [UInt8]? {
+    public func commonName() -> [UInt8]? {
         // No subject name is unexpected, but it gives us an easy time of handling this at least.
         guard let subjectName = CCryptoBoringSSL_X509_get_subject_name(self.ref) else {
             return nil
@@ -519,76 +488,27 @@ extension Certificate: Hashable {
     }
 }
 
-/// A helper sequence object that enables us to represent subject alternative names
-/// as an iterable Swift sequence.
-internal class SubjectAltNameSequence: Sequence, IteratorProtocol {
-    typealias Element = Certificate.AlternativeName
-
-    private let nameStack: OpaquePointer
-    private var nextIdx: Int
-    private let stackSize: Int
-
-    init(nameStack: OpaquePointer) {
-        self.nameStack = nameStack
-        self.stackSize = CCryptoBoringSSLShims_sk_GENERAL_NAME_num(nameStack)
-        self.nextIdx = 0
-    }
-
-    private func addressFromBytes(bytes: UnsafeBufferPointer<UInt8>) -> Certificate.IPAddress? {
-        switch bytes.count {
-        case 4:
-            let addr = bytes.baseAddress?.withMemoryRebound(to: in_addr.self, capacity: 1) {
-                return $0.pointee
-            }
-            guard let innerAddr = addr else {
-                return nil
-            }
-            return .ipv4(innerAddr)
-        case 16:
-            let addr = bytes.baseAddress?.withMemoryRebound(to: in6_addr.self, capacity: 1) {
-                return $0.pointee
-            }
-            guard let innerAddr = addr else {
-                return nil
-            }
-            return .ipv6(innerAddr)
-        default:
+extension Certificate.IPAddress {
+  init?(addressFromBytes bytes: UnsafeBufferPointer<UInt8>) {
+    switch bytes.count {
+    case 4:
+        let addr = bytes.baseAddress?.withMemoryRebound(to: in_addr.self, capacity: 1) {
+            return $0.pointee
+        }
+        guard let innerAddr = addr else {
             return nil
         }
-    }
-
-    func next() -> Certificate.AlternativeName? {
-        guard self.nextIdx < self.stackSize else {
+        self = .ipv4(innerAddr)
+    case 16:
+        let addr = bytes.baseAddress?.withMemoryRebound(to: in6_addr.self, capacity: 1) {
+            return $0.pointee
+        }
+        guard let innerAddr = addr else {
             return nil
         }
-
-        guard let name = CCryptoBoringSSLShims_sk_GENERAL_NAME_value(self.nameStack, self.nextIdx) else {
-            fatalError("Unexpected null pointer when unwrapping SAN value")
-        }
-
-        self.nextIdx += 1
-
-        switch name.pointee.type {
-        case GEN_DNS:
-            let namePtr = UnsafeBufferPointer(start: CCryptoBoringSSL_ASN1_STRING_get0_data(name.pointee.d.ia5),
-                                              count: Int(CCryptoBoringSSL_ASN1_STRING_length(name.pointee.d.ia5)))
-            let nameString = [UInt8](namePtr)
-            return .dnsName(nameString)
-        case GEN_IPADD:
-            let addrPtr = UnsafeBufferPointer(start: CCryptoBoringSSL_ASN1_STRING_get0_data(name.pointee.d.ia5),
-                                              count: Int(CCryptoBoringSSL_ASN1_STRING_length(name.pointee.d.ia5)))
-            guard let addr = addressFromBytes(bytes: addrPtr) else {
-                // This should throw, but we can't throw from next(). Skip this instead.
-                return self.next()
-            }
-            return .ipAddress(addr)
-        default:
-            // We don't recognise this name type. Skip it.
-            return next()
-        }
+        self = .ipv6(innerAddr)
+    default:
+        return nil
     }
-
-    deinit {
-        CCryptoBoringSSL_GENERAL_NAMES_free(self.nameStack)
-    }
+  }
 }
