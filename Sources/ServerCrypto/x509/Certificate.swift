@@ -229,7 +229,7 @@ public class Certificate {
         case ipv6(in6_addr)
     }
 
-    private init(withOwnedReference ref: UnsafeMutablePointer<X509>) {
+    internal init(withOwnedReference ref: UnsafeMutablePointer<X509>) {
         self._ref = UnsafeMutableRawPointer(ref) // erasing the type for @_implementationOnly import CCryptoBoringSSL
     }
 
@@ -363,83 +363,6 @@ extension Certificate {
         return try self.withUnsafeDERCertificateBuffer { Array($0) }
     }
 
-    /// Create an array of `Certificate`s from a buffer of bytes in PEM format.
-    ///
-    /// - Parameter buffer: The PEM buffer to read certificates from.
-    /// - Throws: If an error is encountered while reading certificates.
-    /// - SeeAlso: `Certificate.fromPEMBytes(_:)`
-    @available(*, deprecated, renamed: "Certificate.fromPEMBytes(_:)")
-    public class func fromPEMBuffer(_ buffer: [Int8]) throws -> [Certificate] {
-        return try fromPEMBytes(buffer.map(UInt8.init))
-    }
-
-    /// Create an array of `Certificate`s from a buffer of bytes in PEM format.
-    ///
-    /// - Parameter bytes: The PEM buffer to read certificates from.
-    /// - Throws: If an error is encountered while reading certificates.
-    public class func fromPEMBytes(_ bytes: [UInt8]) throws -> [Certificate] {
-        CCryptoBoringSSL_ERR_clear_error()
-        defer {
-            CCryptoBoringSSL_ERR_clear_error()
-        }
-
-        return try bytes.withUnsafeBytes { (ptr) -> [Certificate] in
-            let bio = CCryptoBoringSSL_BIO_new_mem_buf(ptr.baseAddress, CInt(ptr.count))!
-            defer {
-                CCryptoBoringSSL_BIO_free(bio)
-            }
-
-            return try readCertificatesFromBIO(bio)
-        }
-    }
-
-    /// Create an array of `Certificate`s from a file at a given path in PEM format.
-    ///
-    /// - Parameter file: The PEM file to read certificates from.
-    /// - Throws: If an error is encountered while reading certificates.
-    public class func fromPEMFile(_ path: String) throws -> [Certificate] {
-        CCryptoBoringSSL_ERR_clear_error()
-        defer {
-            CCryptoBoringSSL_ERR_clear_error()
-        }
-
-        guard let bio = CCryptoBoringSSL_BIO_new(CCryptoBoringSSL_BIO_s_file()) else {
-            throw CryptoCertificateError.unableToAllocateBoringSSLObject
-        }
-        defer {
-            CCryptoBoringSSL_BIO_free(bio)
-        }
-
-        guard CCryptoBoringSSL_BIO_read_filename(bio, path) > 0 else {
-            throw CryptoCertificateError.failedToLoadCertificate
-        }
-
-        return try readCertificatesFromBIO(bio)
-    }
-
-    /// Reads `Certificate`s from the given BIO.
-    private class func readCertificatesFromBIO(_ bio: UnsafeMutablePointer<BIO>) throws -> [Certificate] {
-        guard let x509 = CCryptoBoringSSL_PEM_read_bio_X509_AUX(bio, nil, nil, nil) else {
-            throw CryptoCertificateError.failedToLoadCertificate
-        }
-
-        var certificates = [Certificate(withOwnedReference: x509)]
-
-        while let x = CCryptoBoringSSL_PEM_read_bio_X509(bio, nil, nil, nil) {
-            certificates.append(.init(withOwnedReference: x))
-        }
-
-        let err = CCryptoBoringSSL_ERR_peek_error()
-
-        // If we hit the end of the file then it's not a real error, we just read as much as we could.
-        if CCryptoBoringSSLShims_ERR_GET_LIB(err) == ERR_LIB_PEM && CCryptoBoringSSLShims_ERR_GET_REASON(err) == PEM_R_NO_START_LINE {
-            CCryptoBoringSSL_ERR_clear_error()
-        } else {
-            throw CryptoCertificateError.failedToLoadCertificate
-        }
-
-        return certificates
-    }
 
     /// Calls the given body function with a temporary buffer containing the DER-encoded bytes of this
     /// certificate. This function does allocate for these bytes, but there is no way to avoid doing so with the

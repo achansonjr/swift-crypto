@@ -182,7 +182,7 @@ class CertificateTest: XCTestCase {
     }
 
     func testPemLoadingMechanismsAreIdentical() throws {
-        let cert11 = try Certificate.fromPEMBytes(.init(samplePemCert.utf8))
+        let cert11 = try Array.init(fromPEMBytes: .init(samplePemCert.utf8))
         let cert12 = try Certificate(bytes: .init(samplePemCert.utf8), format: .pem)
 
         XCTAssertEqual(cert11, [cert12])
@@ -190,8 +190,8 @@ class CertificateTest: XCTestCase {
     }
 
     func testLoadingPemCertsFromMemory() throws {
-        let certs1 = try Certificate.fromPEMBytes(.init(samplePemCerts.utf8))
-        let certs2 = try Certificate.fromPEMBytes(.init(samplePemCerts.utf8))
+        let certs1 = try Array.init(fromPEMBytes: .init(samplePemCerts.utf8))
+        let certs2 = try Array.init(fromPEMBytes: .init(samplePemCerts.utf8))
 
         XCTAssertEqual(certs1.count, 2)
         XCTAssertEqual(certs1, certs2)
@@ -199,8 +199,8 @@ class CertificateTest: XCTestCase {
     }
 
     func testLoadingPemCertsFromFile() throws {
-        let certs1 = try Certificate.fromPEMFile(CertificateTest.pemCertsFilePath)
-        let certs2 = try Certificate.fromPEMFile(CertificateTest.pemCertsFilePath)
+        let certs1 = try Array.init(fromPathFile: CertificateTest.pemCertsFilePath)
+        let certs2 = try Array.init(fromPathFile: CertificateTest.pemCertsFilePath)
 
         XCTAssertEqual(certs1.count, 2)
         XCTAssertEqual(certs1, certs2)
@@ -231,7 +231,7 @@ class CertificateTest: XCTestCase {
         let keyBytes: [UInt8] = [1, 2, 3]
 
         do {
-            _ = try Certificate.fromPEMBytes(keyBytes)
+            _ = try Array(fromPEMBytes: keyBytes)
             XCTFail("Gibberish successfully loaded")
         } catch CryptoCertificateError.failedToLoadCertificate {
             // Do nothing.
@@ -270,7 +270,7 @@ class CertificateTest: XCTestCase {
         }
 
         do {
-            _ = try Certificate.fromPEMFile(tempFile)
+            _ = try Array(fromPathFile: tempFile)
             XCTFail("Gibberish successfully loaded")
         } catch CryptoCertificateError.failedToLoadCertificate {
             // Do nothing.
@@ -302,7 +302,7 @@ class CertificateTest: XCTestCase {
 
     func testLoadingNonexistentPEMFile() throws {
         do {
-            _ = try Certificate.fromPEMFile("/nonexistent/path")
+            _ = try Array(fromPathFile: "/nonexistent/path")
             XCTFail("Did not throw")
         } catch CryptoCertificateError.failedToLoadCertificate {
             // Do nothing.
