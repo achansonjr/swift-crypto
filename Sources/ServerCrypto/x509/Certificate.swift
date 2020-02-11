@@ -246,7 +246,7 @@ public class Certificate {
 
     /// Create a Certificate from a buffer of bytes in either PEM or
     /// DER format.
-    public convenience init(bytes: [UInt8], format: CryptoSerializationFormats) throws {
+    public convenience init<B: ContiguousBytes>(bytes: B, format: CryptoSerializationFormats) throws {
       let ref = try foo(bytes: bytes, format: format)
         self.init(withOwnedReference: ref!)
     }

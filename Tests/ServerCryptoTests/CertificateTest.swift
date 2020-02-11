@@ -174,24 +174,24 @@ class CertificateTest: XCTestCase {
     }
 
     func testLoadingPemCertFromMemory() throws {
-        let cert1 = try Certificate(bytes: .init(samplePemCert.utf8), format: .pem)
-        let cert2 = try Certificate(bytes: .init(samplePemCert.utf8), format: .pem)
+        let cert1 = try Certificate(bytes: samplePemCert.data(using: .utf8)!, format: .pem)
+        let cert2 = try Certificate(bytes: samplePemCert.data(using: .utf8)!, format: .pem)
 
         XCTAssertEqual(cert1, cert2)
         XCTAssertEqual(cert1.hashValue, cert2.hashValue)
     }
 
     func testPemLoadingMechanismsAreIdentical() throws {
-        let cert11 = try Array.init(fromPEMBytes: .init(samplePemCert.utf8))
-        let cert12 = try Certificate(bytes: .init(samplePemCert.utf8), format: .pem)
+        let cert11 = try Array(fromPEMBytes: samplePemCert.data(using: .utf8)!)
+        let cert12 = try Certificate(bytes: samplePemCert.data(using: .utf8)!, format: .pem)
 
         XCTAssertEqual(cert11, [cert12])
         XCTAssertEqual(cert11.map { $0.hashValue }, [cert12.hashValue])
     }
 
     func testLoadingPemCertsFromMemory() throws {
-        let certs1 = try Array.init(fromPEMBytes: .init(samplePemCerts.utf8))
-        let certs2 = try Array.init(fromPEMBytes: .init(samplePemCerts.utf8))
+        let certs1 = try Array.init(fromPEMBytes: samplePemCerts.data(using: .utf8)!)
+        let certs2 = try Array.init(fromPEMBytes: samplePemCerts.data(using: .utf8)!)
 
         XCTAssertEqual(certs1.count, 2)
         XCTAssertEqual(certs1, certs2)
@@ -199,8 +199,8 @@ class CertificateTest: XCTestCase {
     }
 
     func testLoadingPemCertsFromFile() throws {
-        let certs1 = try Array.init(fromPathFile: CertificateTest.pemCertsFilePath)
-        let certs2 = try Array.init(fromPathFile: CertificateTest.pemCertsFilePath)
+        let certs1 = try Array.init(withPEMPathString: CertificateTest.pemCertsFilePath)
+        let certs2 = try Array.init(withPEMPathString: CertificateTest.pemCertsFilePath)
 
         XCTAssertEqual(certs1.count, 2)
         XCTAssertEqual(certs1, certs2)
@@ -270,7 +270,7 @@ class CertificateTest: XCTestCase {
         }
 
         do {
-            _ = try Array(fromPathFile: tempFile)
+            _ = try Array(withPEMPathString: tempFile)
             XCTFail("Gibberish successfully loaded")
         } catch CryptoCertificateError.failedToLoadCertificate {
             // Do nothing.
@@ -302,7 +302,7 @@ class CertificateTest: XCTestCase {
 
     func testLoadingNonexistentPEMFile() throws {
         do {
-            _ = try Array(fromPathFile: "/nonexistent/path")
+            _ = try Array(withPEMPathString: "/nonexistent/path")
             XCTFail("Did not throw")
         } catch CryptoCertificateError.failedToLoadCertificate {
             // Do nothing.

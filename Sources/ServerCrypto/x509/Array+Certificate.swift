@@ -18,24 +18,27 @@ extension Array where Element == Certificate {
   ///
   /// - Parameter file: The PEM file to read certificates from.
   /// - Throws: If an error is encountered while reading certificates.
-  init(fromPathFile: String) throws {
-      CCryptoBoringSSL_ERR_clear_error()
-      defer {
-          CCryptoBoringSSL_ERR_clear_error()
-      }
-
-      guard let bio = CCryptoBoringSSL_BIO_new(CCryptoBoringSSL_BIO_s_file()) else {
-          throw CryptoCertificateError.unableToAllocateBoringSSLObject
-      }
-      defer {
-          CCryptoBoringSSL_BIO_free(bio)
-      }
-
-      guard CCryptoBoringSSL_BIO_read_filename(bio, fromPathFile) > 0 else {
-          throw CryptoCertificateError.failedToLoadCertificate
-      }
-
-      self = try Array(fromBIO: bio)
+  init(withPEMPathString: String) throws {
+      let pemURL = URL(fileURLWithPath: withPEMPathString)
+      let data = try Data(contentsOf: pemURL)
+      self = try Array(fromPEMBytes: data)
+//      CCryptoBoringSSL_ERR_clear_error()
+//      defer {
+//          CCryptoBoringSSL_ERR_clear_error()
+//      }
+//
+//      guard let bio = CCryptoBoringSSL_BIO_new(CCryptoBoringSSL_BIO_s_file()) else {
+//          throw CryptoCertificateError.unableToAllocateBoringSSLObject
+//      }
+//      defer {
+//          CCryptoBoringSSL_BIO_free(bio)
+//      }
+//
+//      guard CCryptoBoringSSL_BIO_read_filename(bio, fromPathFile) > 0 else {
+//          throw CryptoCertificateError.failedToLoadCertificate
+//      }
+//
+//      self = try Array(fromBIO: bio)
   }
 
   /// Reads `Certificate`s from the given BIO.
@@ -66,7 +69,7 @@ extension Array where Element == Certificate {
   ///
   /// - Parameter bytes: The PEM buffer to read certificates from.
   /// - Throws: If an error is encountered while reading certificates.
-  init(fromPEMBytes: [UInt8]) throws {
+  init<B: ContiguousBytes>(fromPEMBytes: B) throws {
       CCryptoBoringSSL_ERR_clear_error()
       defer {
           CCryptoBoringSSL_ERR_clear_error()
