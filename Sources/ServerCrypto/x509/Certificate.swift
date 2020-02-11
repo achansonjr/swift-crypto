@@ -1,12 +1,12 @@
 //===----------------------------------------------------------------------===//
 //
-// This source file is part of the SwiftNIO open source project
+// This source file is part of the SwiftCrypto open source project
 //
-// Copyright (c) 2017-2018 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2017-2018 Apple Inc. and the SwiftCrypto project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.txt for the list of SwiftNIO project authors
+// See CONTRIBUTORS.txt for the list of SwiftCrypto project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -134,7 +134,7 @@ internal extension BoringCertificateError {
     }
 }
 
-/// Errors that can be raised by NIO's BoringSSL wrapper.
+/// Errors that can be raised by Crypto's BoringSSL wrapper.
 public enum CryptoCertificateError: Error {
     case writeDuringTLSShutdown
     case unableToAllocateBoringSSLObject
@@ -291,7 +291,7 @@ public class Certificate {
     /// Returns the commonName field in the Subject of this certificate.
     ///
     /// It is technically possible to have multiple common names in a certificate. As the primary
-    /// purpose of this field in SwiftNIO is to validate TLS certificates, we only ever return
+    /// purpose of this field in SwiftCrypto is to validate TLS certificates, we only ever return
     /// the *most significant* (i.e. last) instance of commonName in the subject.
     public func commonName() -> [UInt8]? {
         // No subject name is unexpected, but it gives us an easy time of handling this at least.
@@ -340,7 +340,7 @@ public class Certificate {
 // MARK:- Utility Functions
 // We don't really want to get too far down the road of providing helpers for things like certificates
 // and private keys: this is really the domain of alternative cryptography libraries. However, to
-// enable users of swift-nio-ssl to use other cryptography libraries it will be helpful to provide
+// enable users of swift-crypto to use other cryptography libraries it will be helpful to provide
 // the ability to obtain the bytes that correspond to certificates and keys.
 extension Certificate {
     /// Obtain the public key for this `Certificate`.

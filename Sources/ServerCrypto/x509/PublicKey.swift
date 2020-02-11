@@ -1,12 +1,12 @@
 //===----------------------------------------------------------------------===//
 //
-// This source file is part of the SwiftNIO open source project
+// This source file is part of the SwiftCrypto open source project
 //
-// Copyright (c) 2017-2018 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2017-2018 Apple Inc. and the SwiftCrypto project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.txt for the list of SwiftNIO project authors
+// See CONTRIBUTORS.txt for the list of SwiftCrypto project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -21,8 +21,8 @@ import CCryptoBoringSSL
 /// An `PublicKey` is an abstract handle to a public key owned by BoringSSL.
 ///
 /// This object is of minimal utility, as it cannot be used for very many operations
-/// in `NIOSSL`. Its primary purpose is to allow extracting public keys from
-/// `NIOSSLCertificate` objects to be serialized, so that they can be passed to
+/// in `SwiftCrypto`. Its primary purpose is to allow extracting public keys from
+/// `Certificate` objects to be serialized, so that they can be passed to
 /// general-purpose cryptography libraries.
 public class PublicKey {
     private let _ref: UnsafeMutableRawPointer /*<EVP_PKEY>*/
@@ -42,13 +42,13 @@ public class PublicKey {
 
 // MARK:- Helpful initializers
 extension PublicKey {
-    /// Create an `NIOSSLPublicKey` object from an internal `EVP_PKEY` pointer.
+    /// Create a `PublicKey` object from an internal `EVP_PKEY` pointer.
     ///
     /// This method expects `pointer` to be passed at +1, and consumes that reference.
     ///
     /// - parameters:
     ///    - pointer: A pointer to an `EVP_PKEY` structure containing the public key.
-    /// - returns: An `NIOSSLPublicKey` wrapping the pointer.
+    /// - returns: An `PublicKey` wrapping the pointer.
     internal static func fromInternalPointer(takingOwnership pointer: UnsafeMutablePointer<EVP_PKEY>) -> PublicKey {
         return PublicKey(withOwnedReference: pointer)
     }
