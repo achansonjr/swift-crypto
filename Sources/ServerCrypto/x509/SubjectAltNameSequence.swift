@@ -1,10 +1,16 @@
+//===----------------------------------------------------------------------===//
 //
-//  SubjectAltNameSequence.swift
-//  
+// This source file is part of the SwiftCrypto open source project
 //
-//  Created by Lovelett, Ryan A. on 2/10/20.
+// Copyright (c) 2020 Apple Inc. and the SwiftCrypto project authors
+// Licensed under Apache License v2.0
 //
-
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of SwiftCrypto project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 #if compiler(>=5.1) && compiler(<5.3)
 @_implementationOnly import CCryptoBoringSSL
 @_implementationOnly import CCryptoBoringSSLShims
