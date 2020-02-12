@@ -16,27 +16,9 @@ import Foundation
 
 struct Certificates {
   fileprivate var contents: [Certificate] = []
-
-  var totalCount: Int {
-    return contents.count
-  }
   
   init<S: Sequence>(_ sequence: S) where S.Iterator.Element == Certificate {
-    for element in sequence {
-      add(element)
-    }
-  }
-
-  mutating func add(_ member: Certificate) {
-    contents.append(member)
-  }
-  
-  mutating func remove(_ member: Certificate) {
-    guard let index = contents.firstIndex(of: member) else {
-      return
-    }
-    
-    contents.remove(at: index)
+    self.contents = [Certificate](sequence)
   }
   
 }

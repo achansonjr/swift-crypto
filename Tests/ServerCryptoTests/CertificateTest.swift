@@ -185,7 +185,7 @@ class CertificateTest: XCTestCase {
         let certs1 = try Certificates(PEMBytes: samplePemCerts.data(using: .utf8)!)
         let certs2 = try Certificates(PEMBytes: samplePemCerts.data(using: .utf8)!)
 
-        XCTAssertEqual(certs1.totalCount, 2)
+        XCTAssertEqual(certs1.count, 2)
         XCTAssertEqual(certs1, certs2)
         XCTAssertEqual(certs1.map { $0.hashValue }, certs2.map { $0.hashValue })
     }
