@@ -181,28 +181,11 @@ class CertificateTest: XCTestCase {
         XCTAssertEqual(cert1.hashValue, cert2.hashValue)
     }
 
-    func testPemLoadingMechanismsAreIdentical() throws {
-        let cert11 = try Array(fromPEMBytes: samplePemCert.data(using: .utf8)!)
-        let cert12 = try Certificate(bytes: samplePemCert.data(using: .utf8)!, format: .pem)
-
-        XCTAssertEqual(cert11, [cert12])
-        XCTAssertEqual(cert11.map { $0.hashValue }, [cert12.hashValue])
-    }
-
     func testLoadingPemCertsFromMemory() throws {
-        let certs1 = try Array.init(fromPEMBytes: samplePemCerts.data(using: .utf8)!)
-        let certs2 = try Array.init(fromPEMBytes: samplePemCerts.data(using: .utf8)!)
+        let certs1 = try Certificates(PEMBytes: samplePemCerts.data(using: .utf8)!)
+        let certs2 = try Certificates(PEMBytes: samplePemCerts.data(using: .utf8)!)
 
-        XCTAssertEqual(certs1.count, 2)
-        XCTAssertEqual(certs1, certs2)
-        XCTAssertEqual(certs1.map { $0.hashValue }, certs2.map { $0.hashValue })
-    }
-
-    func testLoadingPemCertsFromFile() throws {
-        let certs1 = try Array.init(withPEMPathString: CertificateTest.pemCertsFilePath)
-        let certs2 = try Array.init(withPEMPathString: CertificateTest.pemCertsFilePath)
-
-        XCTAssertEqual(certs1.count, 2)
+        XCTAssertEqual(certs1.totalCount, 2)
         XCTAssertEqual(certs1, certs2)
         XCTAssertEqual(certs1.map { $0.hashValue }, certs2.map { $0.hashValue })
     }
@@ -231,7 +214,7 @@ class CertificateTest: XCTestCase {
         let keyBytes: [UInt8] = [1, 2, 3]
 
         do {
-            _ = try Array(fromPEMBytes: keyBytes)
+            _ = try Certificates(PEMBytes: keyBytes)
             XCTFail("Gibberish successfully loaded")
         } catch CryptoCertificateError.failedToLoadCertificate {
             // Do nothing.
@@ -263,55 +246,9 @@ class CertificateTest: XCTestCase {
         }
     }
 
-    func testLoadingGibberishFromPEMFileFails() throws {
-        let tempFile = try dumpToFile(text: "hello")
-        defer {
-            _ = tempFile.withCString { unlink($0) }
-        }
-
-        do {
-            _ = try Array(withPEMPathString: tempFile)
-            XCTFail("Gibberish successfully loaded")
-        } catch CryptoCertificateError.failedToLoadCertificate {
-            // Do nothing.
-        }
-    }
-
-    func testLoadingGibberishFromFileAsDerFails() throws {
-        let tempFile = try dumpToFile(text: "hello")
-        defer {
-            _ = tempFile.withCString { unlink($0) }
-        }
-
-        do {
-            _ = try Certificate(file: tempFile, format: .der)
-            XCTFail("Gibberish successfully loaded")
-        } catch CryptoCertificateError.failedToLoadCertificate {
-            // Do nothing.
-        }
-    }
-
     func testLoadingNonexistentFileAsPem() throws {
         do {
             _ = try Certificate(file: "/nonexistent/path", format: .pem)
-            XCTFail("Did not throw")
-        }  catch CryptoCertificateError.failedToLoadCertificate {
-                   // Do nothing.
-               }
-    }
-
-    func testLoadingNonexistentPEMFile() throws {
-        do {
-            _ = try Array(withPEMPathString: "/nonexistent/path")
-            XCTFail("Did not throw")
-        } catch CryptoCertificateError.failedToLoadCertificate {
-            // Do nothing.
-        }
-    }
-
-    func testLoadingNonexistentFileAsDer() throws {
-        do {
-            _ = try Certificate(file: "/nonexistent/path", format: .der)
             XCTFail("Did not throw")
         }  catch CryptoCertificateError.failedToLoadCertificate {
                    // Do nothing.
@@ -330,7 +267,7 @@ class CertificateTest: XCTestCase {
             .ipAddress(.ipv4(v4addr)),
             .ipAddress(.ipv6(v6addr)),
         ]
-        let cert = try Certificate(bytes: .init(multiSanCert.utf8), format: .pem)
+        let cert = try Certificate(bytes: multiSanCert.data(using: .utf8)!, format: .pem)
         let sans = [Certificate.AlternativeName](cert.subjectAlternativeNames()!)
 
         XCTAssertEqual(sans.count, expectedSanFields.count)
@@ -349,32 +286,32 @@ class CertificateTest: XCTestCase {
     }
 
     func testNonexistentSan() throws {
-        let cert = try Certificate(bytes: .init(samplePemCert.utf8), format: .pem)
+        let cert = try Certificate(bytes: samplePemCert.data(using: .utf8)!, format: .pem)
         XCTAssertNil(cert.subjectAlternativeNames())
     }
 
     func testCommonName() throws {
-        let cert = try Certificate(bytes: .init(samplePemCert.utf8), format: .pem)
+        let cert = try Certificate(bytes: samplePemCert.data(using: .utf8)!, format: .pem)
         XCTAssertEqual([UInt8]("robots.sanfransokyo.edu".utf8), cert.commonName()!)
     }
 
     func testMultipleCommonNames() throws {
-        let cert = try Certificate(bytes: .init(multiCNCert.utf8), format: .pem)
+        let cert = try Certificate(bytes: multiCNCert.data(using: .utf8)!, format: .pem)
         XCTAssertEqual([UInt8]("localhost".utf8), cert.commonName()!)
     }
 
     func testNoCommonName() throws {
-        let cert = try Certificate(bytes: .init(noCNCert.utf8), format: .pem)
+        let cert = try Certificate(bytes: noCNCert.data(using: .utf8)!, format: .pem)
         XCTAssertNil(cert.commonName())
     }
 
     func testUnicodeCommonName() throws {
-        let cert = try Certificate(bytes: .init(unicodeCNCert.utf8), format: .pem)
+        let cert = try Certificate(bytes: unicodeCNCert.data(using: .utf8)!, format: .pem)
         XCTAssertEqual([UInt8]("straße.org".utf8), cert.commonName()!)
     }
 
     func testExtractingPublicKey() throws {
-        let cert = try assertNoThrowWithValue(Certificate(bytes: .init(samplePemCert.utf8), format: .pem))
+        let cert = try assertNoThrowWithValue(Certificate(bytes: samplePemCert.data(using: .utf8)!, format: .pem))
         let publicKey = try assertNoThrowWithValue(cert.extractPublicKey())
         let spkiBytes = try assertNoThrowWithValue(publicKey.toSPKIBytes())
 
@@ -383,7 +320,7 @@ class CertificateTest: XCTestCase {
 
     func testDumpingPEMCert() throws {
         let expectedCertBytes = [UInt8](sampleDerCert)
-        let cert = try assertNoThrowWithValue(Certificate(bytes: .init(samplePemCert.utf8), format: .pem))
+        let cert = try assertNoThrowWithValue(Certificate(bytes: samplePemCert.data(using: .utf8)!, format: .pem))
         let certBytes = try assertNoThrowWithValue(cert.toDERBytes())
 
         XCTAssertEqual(certBytes, expectedCertBytes)

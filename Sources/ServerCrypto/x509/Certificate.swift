@@ -180,7 +180,7 @@ public enum CryptoSerializationFormats {
     case der
 }
 
-private func foo<C: ContiguousBytes>(bytes: C, format: CryptoSerializationFormats) throws -> UnsafeMutablePointer<X509>? {
+private func createX509Ref<C: ContiguousBytes>(bytes: C, format: CryptoSerializationFormats) throws -> UnsafeMutablePointer<X509>? {
   let ref = bytes.withUnsafeBytes { (ptr) -> UnsafeMutablePointer<X509>? in
     let bio = CCryptoBoringSSL_BIO_new_mem_buf(ptr.baseAddress, CInt(ptr.count))!
 
@@ -240,14 +240,14 @@ public class Certificate {
     public convenience init(file: String, format: CryptoSerializationFormats) throws {
       let url = URL(fileURLWithPath: file)
       let data = try Data(contentsOf: url)
-      let ref = try foo(bytes: data, format: format)
+      let ref = try createX509Ref(bytes: data, format: format)
       self.init(withOwnedReference: ref!)
     }
 
     /// Create a Certificate from a buffer of bytes in either PEM or
     /// DER format.
     public convenience init<B: ContiguousBytes>(bytes: B, format: CryptoSerializationFormats) throws {
-      let ref = try foo(bytes: bytes, format: format)
+      let ref = try createX509Ref(bytes: bytes, format: format)
         self.init(withOwnedReference: ref!)
     }
 
