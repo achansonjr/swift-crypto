@@ -26,7 +26,10 @@ final class BIOIterator {
   private var bio: UnsafeMutablePointer<BIO>?
 
   convenience init(pem: String) throws {
-    try self.init(PEMBytes: pem.data(using: .utf8)!)
+    guard let pemData = pem.data(using: .utf8) else {
+      throw CryptoCertificateError.failedToLoadCertificate
+    }
+    try self.init(PEMBytes: pemData)
   }
 
   convenience init<B: ContiguousBytes>(PEMBytes: B) throws {
@@ -54,11 +57,18 @@ final class BIOIterator {
 extension BIOIterator: IteratorProtocol {
 
   func next() -> Certificate? {
-    guard let foo = CCryptoBoringSSL_PEM_read_bio_X509_AUX(bio, nil, nil, nil) else {
-      return nil
-    }
+    if let foo = CCryptoBoringSSL_PEM_read_bio_X509_AUX(bio, nil, nil, nil) {
+      return Certificate(withOwnedReference: foo)
+    } else {
+      let err = CCryptoBoringSSL_ERR_peek_error()
 
-    return Certificate(withOwnedReference: foo)
+      // If we hit the end of the file then it's not a real error, we just read as much as we could.
+      if CCryptoBoringSSLShims_ERR_GET_LIB(err) == ERR_LIB_PEM && CCryptoBoringSSLShims_ERR_GET_REASON(err) == PEM_R_NO_START_LINE {
+          CCryptoBoringSSL_ERR_clear_error()
+      } else {
+          throw CryptoCertificateError.failedToLoadCertificate
+      }
+    }
   }
 
 }
