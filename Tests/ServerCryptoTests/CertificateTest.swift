@@ -181,15 +181,6 @@ class CertificateTest: XCTestCase {
         XCTAssertEqual(cert1.hashValue, cert2.hashValue)
     }
 
-    func testLoadingPemCertsFromMemory() throws {
-        let certs1 = try Certificates(PEMBytes: samplePemCerts.data(using: .utf8)!)
-        let certs2 = try Certificates(PEMBytes: samplePemCerts.data(using: .utf8)!)
-
-        XCTAssertEqual(certs1.count, 2)
-        XCTAssertEqual(certs1, certs2)
-        XCTAssertEqual(certs1.map { $0.hashValue }, certs2.map { $0.hashValue })
-    }
-
     func testLoadingDerCertFromMemory() throws {
         let certBytes = [UInt8](sampleDerCert)
         let cert1 = try Certificate(bytes: certBytes, format: .der)
@@ -204,17 +195,6 @@ class CertificateTest: XCTestCase {
 
         do {
             _ = try Certificate(bytes: keyBytes, format: .pem)
-            XCTFail("Gibberish successfully loaded")
-        } catch CryptoCertificateError.failedToLoadCertificate {
-            // Do nothing.
-        }
-    }
-
-    func testLoadingGibberishFromPEMBufferFails() throws {
-        let keyBytes: [UInt8] = [1, 2, 3]
-
-        do {
-            _ = try Certificates(PEMBytes: keyBytes)
             XCTFail("Gibberish successfully loaded")
         } catch CryptoCertificateError.failedToLoadCertificate {
             // Do nothing.
