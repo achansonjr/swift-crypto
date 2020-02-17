@@ -44,7 +44,7 @@ Having a primitive of `Certificate` inside of `swift-crypto` in a community main
 
 ## Proposed solution
 
-[swift-nio-ssl/Certificate.swift](https://github.com/apple/swift-nio-ssl/blob/master/Sources/NIOSSL/SSLCertificate.swift) already exists in swift-nio-ssl. The implementation meets all the requirements for parsing a PEM/DER certificate utilizing BoringSSL.
+[swift-nio-ssl/Certificate.swift](https://github.com/apple/swift-nio-ssl/blob/6ee46effd186e955383f422ddd842a43f9fee1f3/Sources/NIOSSL/SSLCertificate.swift) already exists in swift-nio-ssl. The implementation meets all the requirements for parsing a PEM/DER certificate utilizing BoringSSL.
 
 Our solution was to create a new library called `ServerCrypto`. Knowing that there was no current "Server Namespace", and no existing analog in CryptoKit, we chose this as an attempt to adhere to this direction:
 
