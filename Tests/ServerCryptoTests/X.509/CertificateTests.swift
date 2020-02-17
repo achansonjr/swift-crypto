@@ -126,48 +126,48 @@ internal func dumpToFile(text: String, fileExtension: String = "") throws -> Str
     return try dumpToFile(data: text.data(using: .utf8)!, fileExtension: fileExtension)
 }
 
-class CertificateTest: XCTestCase {
+class CertificateTests: XCTestCase {
     static var pemCertFilePath: String! = nil
     static var pemCertsFilePath: String! = nil
     static var derCertFilePath: String! = nil
 
     override class func setUp() {
-        CertificateTest.pemCertFilePath = try! dumpToFile(text: samplePemCert)
-        CertificateTest.pemCertsFilePath = try! dumpToFile(text: samplePemCerts)
-        CertificateTest.derCertFilePath = try! dumpToFile(data: sampleDerCert)
+        CertificateTests.pemCertFilePath = try! dumpToFile(text: samplePemCert)
+        CertificateTests.pemCertsFilePath = try! dumpToFile(text: samplePemCerts)
+        CertificateTests.derCertFilePath = try! dumpToFile(data: sampleDerCert)
     }
 
     override class func tearDown() {
-        _ = CertificateTest.pemCertFilePath.withCString {
+        _ = CertificateTests.pemCertFilePath.withCString {
             unlink($0)
         }
-        _ = CertificateTest.pemCertsFilePath.withCString {
+        _ = CertificateTests.pemCertsFilePath.withCString {
             unlink($0)
         }
-        _ = CertificateTest.derCertFilePath.withCString {
+        _ = CertificateTests.derCertFilePath.withCString {
             unlink($0)
         }
     }
 
     func testLoadingPemCertFromFile() throws {
-        let cert1 = try Certificate(file: CertificateTest.pemCertFilePath, format: .pem)
-        let cert2 = try Certificate(file: CertificateTest.pemCertFilePath, format: .pem)
+        let cert1 = try Certificate(file: CertificateTests.pemCertFilePath, format: .pem)
+        let cert2 = try Certificate(file: CertificateTests.pemCertFilePath, format: .pem)
 
         XCTAssertEqual(cert1, cert2)
         XCTAssertEqual(cert1.hashValue, cert2.hashValue)
     }
 
     func testLoadingDerCertFromFile() throws {
-        let cert1 = try Certificate(file: CertificateTest.derCertFilePath, format: .der)
-        let cert2 = try Certificate(file: CertificateTest.derCertFilePath, format: .der)
+        let cert1 = try Certificate(file: CertificateTests.derCertFilePath, format: .der)
+        let cert2 = try Certificate(file: CertificateTests.derCertFilePath, format: .der)
 
         XCTAssertEqual(cert1, cert2)
         XCTAssertEqual(cert1.hashValue, cert2.hashValue)
     }
 
     func testDerAndPemAreIdentical() throws {
-        let cert1 = try Certificate(file: CertificateTest.pemCertFilePath, format: .pem)
-        let cert2 = try Certificate(file: CertificateTest.derCertFilePath, format: .der)
+        let cert1 = try Certificate(file: CertificateTests.pemCertFilePath, format: .pem)
+        let cert2 = try Certificate(file: CertificateTests.derCertFilePath, format: .der)
 
         XCTAssertEqual(cert1, cert2)
         XCTAssertEqual(cert1.hashValue, cert2.hashValue)
