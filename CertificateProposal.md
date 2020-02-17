@@ -32,11 +32,15 @@ fit for Swift Crypto.
 
 ## Motivation
 
-In our project we need a cross platform mechanism to easily extract information out of a Certificate for use in naming applications that utilize TLS to secure communications. We originally started to extend Certificate in the [swift-nio-ssl](https://github.com/apple/swift-nio-ssl) project. After some consideration it just felt to us that this primitive was not exclusive to TLS. In our case, while the certificate was going to be utilized for TLS secured communication, we also needed additional information provided by the certificate to uniquely name the component we were creating on the network due to the required networking protocols specification.
+We were asked to implement an application layer communication protocol on top of TLS. In the course of using the application the user must be shown the certificates used to secure the TLS communications. This means we need a cross-platform mechansim to easily extract information out of the X.509 v3 Certificates (i.e., version number, serial number, validity period, subject name, issuer, etc.).
 
-While working out the best place to put this, we also came across the request by @0xTim. [New API Proposal: Support for PEM/DER keys](https://github.com/apple/swift-crypto/issues/27). Based upon the way we chose to implement this new primitive, we felt that it would address our use case as well as theirs.
+We searched the Swift community for existing implementations that would enable us to do this. Among the implementations we found there was no common consensus on how to interact with X.509 certificates.
 
-Having a primitive of `Certificate` inside of `swift-crypto` in a curated repository *seems* like a way to increase adoption as well as creating a branching point for adding functionality surrounding x509 operations. Future pull requests would be made to create a standard means of interrogating the `Certificate` for details about the certificate, to eventually creating other associated primitives such as a `CertificateSigningRequest`. In the interim this change exposes the `Certificate` type as a primitive available to consumers, without requiring a fork of `swift-nio-ssl` to enable the extension of the `NIOSSLCertificate` type.
+After some consideration it just seemed that there should exist a common way of interacting with X.509 certificates and that Swift Crypto seemed like a good way of providing a common library with a public API.
+
+While working out the best place to put this, we also came across the request by @0xTim. [New API Proposal: Support for PEM/DER keys](https://github.com/apple/swift-crypto/issues/27). Depending upon the way this new primitive is implemented, we felt that it could address our use case as well as theirs.
+
+Having a primitive of `Certificate` inside of `swift-crypto` in a community maintained repository seems like a way to increase adoption. Additonally, it seems like a way to create a library and set of best practices for working with X.509 certificates in Swift. Future pull requests could be made to create a standard means of interrogating `Certificate` for details, creating other associated primitives such as a `CertificateSigningRequest`, or possibly common higher level archive file format types like PKCS #12.
 
 ## Proposed solution
 
