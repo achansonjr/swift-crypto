@@ -19,7 +19,6 @@
 import CCryptoBoringSSL
 import CCryptoBoringSSLShims
 #endif
-import Crypto
 import Foundation
 
 /// Wraps a single error from BoringSSL.

@@ -13,9 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
-import XCTest
-import Crypto
 @testable import ServerCrypto
+import XCTest
 
 let multiSanCert = """
 -----BEGIN CERTIFICATE-----
@@ -230,9 +229,9 @@ class CertificateTests: XCTestCase {
         do {
             _ = try Certificate(file: "/nonexistent/path", format: .pem)
             XCTFail("Did not throw")
-        }  catch CryptoCertificateError.failedToLoadCertificate {
-                   // Do nothing.
-               }
+        } catch CryptoCertificateError.failedToLoadCertificate {
+            // Do nothing.
+        }
     }
 
     func testEnumeratingSanFields() throws {
