@@ -19,160 +19,8 @@
 import CCryptoBoringSSL
 import CCryptoBoringSSLShims
 #endif
+import Crypto
 import Foundation
-
-/// Wraps a single error from BoringSSL.
-public struct BoringSSLInternalError: Equatable, CustomStringConvertible {
-    let errorCode: UInt32
-
-    var errorMessage: String? {
-        // TODO(cory): This should become non-optional in the future, as it always succeeds.
-        var scratchBuffer = [CChar](repeating: 0, count: 512)
-        return scratchBuffer.withUnsafeMutableBufferPointer { pointer in
-            CCryptoBoringSSL_ERR_error_string_n(self.errorCode, pointer.baseAddress!, pointer.count)
-            return String(cString: pointer.baseAddress!)
-        }
-    }
-
-    public var description: String {
-        return "Error: \(errorCode) \(errorMessage ?? "")"
-    }
-
-    init(errorCode: UInt32) {
-        self.errorCode = errorCode
-    }
-
-    public static func ==(lhs: BoringSSLInternalError, rhs: BoringSSLInternalError) -> Bool {
-        return lhs.errorCode == rhs.errorCode
-    }
-
-}
-
-/// A representation of BoringSSL's internal error stack: a list of BoringSSL errors.
-public typealias CryptoBoringSSLErrorStack = [BoringSSLInternalError]
-
-/// An enum that wraps individual BoringSSL errors directly.
-public enum BoringCertificateError: Error {
-    case noError
-    case zeroReturn
-    case wantRead
-    case wantWrite
-    case wantConnect
-    case wantAccept
-    case wantX509Lookup
-    case wantCertificateVerify
-    case syscallError
-    case sslError(CryptoBoringSSLErrorStack)
-    case unknownError(CryptoBoringSSLErrorStack)
-    case invalidSNIName(CryptoBoringSSLErrorStack)
-    case failedToSetALPN(CryptoBoringSSLErrorStack)
-}
-
-extension BoringCertificateError: Equatable {}
-
-public func ==(lhs: BoringCertificateError, rhs: BoringCertificateError) -> Bool {
-    switch (lhs, rhs) {
-    case (.noError, .noError),
-         (.zeroReturn, .zeroReturn),
-         (.wantRead, .wantRead),
-         (.wantWrite, .wantWrite),
-         (.wantConnect, .wantConnect),
-         (.wantAccept, .wantAccept),
-         (.wantX509Lookup, .wantX509Lookup),
-         (.wantCertificateVerify, .wantCertificateVerify),
-         (.syscallError, .syscallError):
-        return true
-    case (.sslError(let e1), .sslError(let e2)),
-         (.unknownError(let e1), .unknownError(let e2)),
-         (.invalidSNIName(let e1), .invalidSNIName(let e2)),
-         (.failedToSetALPN(let e1), .failedToSetALPN(let e2)):
-        return e1 == e2
-    default:
-        return false
-    }
-}
-
-internal extension BoringCertificateError {
-    static func fromSSLGetErrorResult(_ result: CInt) -> BoringCertificateError? {
-        switch result {
-        case SSL_ERROR_NONE:
-            return .noError
-        case SSL_ERROR_ZERO_RETURN:
-            return .zeroReturn
-        case SSL_ERROR_WANT_READ:
-            return .wantRead
-        case SSL_ERROR_WANT_WRITE:
-            return .wantWrite
-        case SSL_ERROR_WANT_CONNECT:
-            return .wantConnect
-        case SSL_ERROR_WANT_ACCEPT:
-            return .wantAccept
-        case SSL_ERROR_WANT_CERTIFICATE_VERIFY:
-            return .wantCertificateVerify
-        case SSL_ERROR_WANT_X509_LOOKUP:
-            return .wantX509Lookup
-        case SSL_ERROR_SYSCALL:
-            return .syscallError
-        case SSL_ERROR_SSL:
-            return .sslError(buildErrorStack())
-        default:
-            return .unknownError(buildErrorStack())
-        }
-    }
-    
-    static func buildErrorStack() -> CryptoBoringSSLErrorStack {
-        var errorStack = CryptoBoringSSLErrorStack()
-        
-        while true {
-            let errorCode = CCryptoBoringSSL_ERR_get_error()
-            if errorCode == 0 { break }
-            errorStack.append(BoringSSLInternalError(errorCode: errorCode))
-        }
-        
-        return errorStack
-    }
-}
-
-/// Errors that can be raised by Crypto's BoringSSL wrapper.
-public enum CryptoCertificateError: Error {
-    case writeDuringTLSShutdown
-    case unableToAllocateBoringSSLObject
-    case noSuchFilesystemObject
-    case failedToLoadCertificate
-    case failedToLoadPrivateKey
-    case handshakeFailed(BoringCertificateError)
-    case shutdownFailed(BoringCertificateError)
-    case cannotMatchULabel
-    case noCertificateToValidate
-    case unableToValidateCertificate
-    case cannotFindPeerIP
-    case readInInvalidTLSState
-    case uncleanShutdown
-}
-
-extension CryptoCertificateError: Equatable {
-    public static func ==(lhs: CryptoCertificateError, rhs: CryptoCertificateError) -> Bool {
-        switch (lhs, rhs) {
-        case (.writeDuringTLSShutdown, .writeDuringTLSShutdown),
-             (.unableToAllocateBoringSSLObject, .unableToAllocateBoringSSLObject),
-             (.noSuchFilesystemObject, .noSuchFilesystemObject),
-             (.failedToLoadCertificate, .failedToLoadCertificate),
-             (.failedToLoadPrivateKey, .failedToLoadPrivateKey),
-             (.cannotMatchULabel, .cannotMatchULabel),
-             (.noCertificateToValidate, .noCertificateToValidate),
-             (.unableToValidateCertificate, .unableToValidateCertificate),
-             (.cannotFindPeerIP, .cannotFindPeerIP),
-             (.readInInvalidTLSState, .readInInvalidTLSState),
-             (.uncleanShutdown, .uncleanShutdown):
-            return true
-        case (.handshakeFailed(let err1), .handshakeFailed(let err2)),
-             (.shutdownFailed(let err1), .shutdownFailed(let err2)):
-            return err1 == err2
-        default:
-            return false
-        }
-    }
-}
 
 public enum CryptoSerializationFormats {
     case pem
@@ -196,7 +44,7 @@ private func createX509Ref<C: ContiguousBytes>(bytes: C, format: CryptoSerializa
   }
 
   if ref == nil {
-    throw CryptoCertificateError.failedToLoadCertificate
+    throw CryptoKitError.internalBoringSSLError()
   }
 
   return ref
@@ -273,7 +121,7 @@ public class Certificate {
         }
 
         if ref == nil {
-            throw CryptoCertificateError.failedToLoadCertificate
+            throw CryptoKitError.internalBoringSSLError()
         }
 
         self.init(withOwnedReference: ref!)
@@ -348,7 +196,7 @@ extension Certificate {
     /// - throws: If an error is encountered extracting the key.
     public func extractPublicKey() throws -> PublicKey {
         guard let key = CCryptoBoringSSL_X509_get_pubkey(self.ref) else {
-            throw CryptoCertificateError.unableToAllocateBoringSSLObject
+            throw CryptoKitError.internalBoringSSLError()
         }
 
         return PublicKey.fromInternalPointer(takingOwnership: key)
@@ -370,7 +218,7 @@ extension Certificate {
     /// The pointer provided to the closure is not valid beyond the lifetime of this method call.
     private func withUnsafeDERCertificateBuffer<T>(_ body: (UnsafeRawBufferPointer) throws -> T) throws -> T {
         guard let bio = CCryptoBoringSSL_BIO_new(CCryptoBoringSSL_BIO_s_mem()) else {
-            throw CryptoCertificateError.unableToAllocateBoringSSLObject
+            throw CryptoKitError.internalBoringSSLError()
         }
 
         defer {
@@ -379,15 +227,14 @@ extension Certificate {
 
         let rc = CCryptoBoringSSL_i2d_X509_bio(bio, self.ref)
         guard rc == 1 else {
-            let errorStack = BoringCertificateError.buildErrorStack()
-            throw BoringCertificateError.unknownError(errorStack)
+            throw CryptoKitError.internalBoringSSLError()
         }
 
         var dataPtr: UnsafeMutablePointer<CChar>? = nil
         let length = CCryptoBoringSSL_BIO_get_mem_data(bio, &dataPtr)
 
         guard let bytes = dataPtr.map({ UnsafeRawBufferPointer(start: $0, count: length) }) else {
-            throw CryptoCertificateError.unableToAllocateBoringSSLObject
+            throw CryptoKitError.internalBoringSSLError()
         }
 
         return try body(bytes)

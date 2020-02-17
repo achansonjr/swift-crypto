@@ -17,6 +17,7 @@
 #else
 import CCryptoBoringSSL
 #endif
+import Crypto
 
 /// An `PublicKey` is an abstract handle to a public key owned by BoringSSL.
 ///
@@ -64,7 +65,7 @@ extension PublicKey {
     /// - throws: If an error occurred while serializing the key.
     public func toSPKIBytes() throws -> [UInt8] {
         guard let bio = CCryptoBoringSSL_BIO_new(CCryptoBoringSSL_BIO_s_mem()) else {
-            throw CryptoCertificateError.unableToAllocateBoringSSLObject
+            throw CryptoKitError.internalBoringSSLError()
         }
 
         defer {
@@ -73,15 +74,14 @@ extension PublicKey {
 
         let rc = CCryptoBoringSSL_i2d_PUBKEY_bio(bio, self.ref)
         guard rc == 1 else {
-            let errorStack = BoringCertificateError.buildErrorStack()
-            throw BoringCertificateError.unknownError(errorStack)
+            throw CryptoKitError.internalBoringSSLError()
         }
 
         var dataPtr: UnsafeMutablePointer<CChar>? = nil
         let length = CCryptoBoringSSL_BIO_get_mem_data(bio, &dataPtr)
 
         guard let bytes = dataPtr.map({ UnsafeMutableRawBufferPointer(start: $0, count: length) }) else {
-            throw CryptoCertificateError.unableToAllocateBoringSSLObject
+            throw CryptoKitError.internalBoringSSLError()
         }
 
         return Array(bytes)

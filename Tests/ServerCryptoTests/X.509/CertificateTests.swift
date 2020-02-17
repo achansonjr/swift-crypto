@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Crypto
 import Foundation
 @testable import ServerCrypto
 import XCTest
@@ -86,7 +87,7 @@ class CertificateTests: XCTestCase {
         do {
             _ = try Certificate(bytes: keyBytes, format: .pem)
             XCTFail("Gibberish successfully loaded")
-        } catch CryptoCertificateError.failedToLoadCertificate {
+        } catch CryptoKitError.underlyingCoreCryptoError(error: _) {
             // Do nothing.
         }
     }
@@ -97,7 +98,7 @@ class CertificateTests: XCTestCase {
         do {
             _ = try Certificate(bytes: keyBytes, format: .der)
             XCTFail("Gibberish successfully loaded")
-        } catch CryptoCertificateError.failedToLoadCertificate {
+        } catch CryptoKitError.underlyingCoreCryptoError(error: _) {
             // Do nothing.
         }
     }
@@ -111,7 +112,7 @@ class CertificateTests: XCTestCase {
         do {
             _ = try Certificate(file: tempFile, format: .pem)
             XCTFail("Gibberish successfully loaded")
-        } catch CryptoCertificateError.failedToLoadCertificate {
+        } catch CryptoKitError.underlyingCoreCryptoError(error: _) {
             // Do nothing.
         }
     }
@@ -120,7 +121,7 @@ class CertificateTests: XCTestCase {
         do {
             _ = try Certificate(file: "/nonexistent/path", format: .pem)
             XCTFail("Did not throw")
-        } catch CryptoCertificateError.failedToLoadCertificate {
+        } catch CryptoKitError.underlyingCoreCryptoError(error: _) {
             // Do nothing.
         }
     }
