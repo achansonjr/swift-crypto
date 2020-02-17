@@ -1,4 +1,4 @@
-# Feature name
+# X.509 Public Key Infrastructure (PKI) Certificates
 
 * Proposal: [SC-0001](CertificateProposal.md)
 * Authors: [Ryan Lovelett](https://github.com/RLovelett), [Clint Hanson](https://github.com/achansonjr)
@@ -10,7 +10,25 @@
 
 ## Introduction
 
-Having a Certificate primitive that wraps the BoringSSL Certificate construct will make it easier to perform cryptographic functions that rely on x509.
+Here we propose a new `Certificate` primitive that provides an idiomatic,
+extensible Swift implementation of the standard X.509 Public Key Infrastructure
+(PKI) Certificates. The implementaion wraps the BoringSSL X.509 certificate
+implementation.
+
+X.509 Public Key Infrastructure (PKI) Certificates provide a standard format
+used to transmit public key, or asymmetric, certificates on the internet. X.509
+certificates are broadly applicable to many domains in the server-side
+community and possibly beyond. This is because X.509 certificates are used in
+TLS to provide a strong binding between a party's identity and trust. TLS is
+used by a number of application layer protocols to provide secure communication
+regardless of transport layer.
+
+X.509 certificates are referenced in a number of
+standards. For instance, [RFC 5246: The Transport Layer Security (TLS) Protocol v1.2](https://tools.ietf.org/html/rfc5246). With the format of X.509 certificates being defined in [RFC 5280: Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile](https://tools.ietf.org/html/rfc5280).
+
+Currently, X.509 certificates are not handled in Swift Crypto. However, given
+how fundamental the format is to cryptography applications it seems a natural
+fit for Swift Crypto.
 
 ## Motivation
 
