@@ -22,49 +22,17 @@ import CCryptoBoringSSLShims
 import Crypto
 import Foundation
 
-public enum CryptoSerializationFormats {
-    case pem
-    case der
-}
-
-private func createX509Ref<C: ContiguousBytes>(bytes: C, format: CryptoSerializationFormats) throws -> UnsafeMutablePointer<X509>? {
-  let ref = bytes.withUnsafeBytes { (ptr) -> UnsafeMutablePointer<X509>? in
-    let bio = CCryptoBoringSSL_BIO_new_mem_buf(ptr.baseAddress, CInt(ptr.count))!
-
-    defer {
-      CCryptoBoringSSL_BIO_free(bio)
-    }
-
-    switch format {
-    case .pem:
-      return CCryptoBoringSSL_PEM_read_bio_X509(bio, nil, nil, nil)
-    case .der:
-      return CCryptoBoringSSL_d2i_X509_bio(bio, nil)
-    }
-  }
-
-  if ref == nil {
-    throw CryptoKitError.internalBoringSSLError()
-  }
-
-  return ref
-}
-
-/// A reference to a BoringSSL Certificate object (`X509 *`).
+/// A container for RFC 5280 defined public key certificates known as X.509 Public Key Infrastructure Certificate.
 ///
-/// This thin wrapper class allows us to use ARC to automatically manage
-/// the memory associated with this TLS certificate. That ensures that BoringSSL
-/// will not free the underlying buffer until we are done with the certificate.
+/// Public key certificates, also known as digital certificates or identity certificates, are used to prove the
+/// ownership of a public key.
 ///
-/// This class also provides several convenience constructors that allow users
-/// to obtain an in-memory representation of a TLS certificate from a buffer of
-/// bytes or from a file path.
-public class Certificate {
-    internal let _ref: UnsafeMutableRawPointer/*<X509>*/
+/// The certificate contains information about the key and information about the owner of the key. Additionally, the
+/// certificate contains a digital signature of another entity that has verified the certificate. These facts can be
+/// used to create a trust chain.
+public struct Certificate {
 
-    internal var ref: UnsafeMutablePointer<X509> {
-        return self._ref.assumingMemoryBound(to: X509.self)
-    }
+    private let box: X509Certificate
 
     public enum AlternativeName {
         case dnsName([UInt8])
@@ -76,60 +44,55 @@ public class Certificate {
         case ipv6(in6_addr)
     }
 
-    internal init(withOwnedReference ref: UnsafeMutablePointer<X509>) {
-        self._ref = UnsafeMutableRawPointer(ref) // erasing the type for @_implementationOnly import CCryptoBoringSSL
-    }
-
-    /// Create a Certificate from a file at a given path in either PEM or
-    /// DER format.
+    /// Create a new `Certificate` from a `String` that contains X.509 data in the textual encoding format known as
+    /// Privacy-Enhanced Mail (PEM) as defined in RFC 7468.
     ///
-    /// Note that this method will only ever load the first certificate from a given file.
-    public convenience init(file: String, format: CryptoSerializationFormats) throws {
-      let url = URL(fileURLWithPath: file)
-      let data = try Data(contentsOf: url)
-      let ref = try createX509Ref(bytes: data, format: format)
-      self.init(withOwnedReference: ref!)
+    /// Initialing from a String containaing PEM encoded X.509 data.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let text = """
+    /// -----BEGIN CERTIFICATE-----
+    /// ...
+    /// -----END CERTIFICATE-----
+    /// """
+    /// let x509 = try Certificate(pem: text)
+    /// ```
+    ///
+    /// - Parameter string: A `String` containing PEM encoded X.509 data.
+    public init(pem string: String) throws {
+//        var copy = string
+//        precondition(copy.isContiguousUTF8)
+//        box = try copy.withUTF8 { try X509Certificate(pem: $0) }
+        let data = Data(string.utf8)
+        box = try X509Certificate(pem: data)
     }
 
-    /// Create a Certificate from a buffer of bytes in either PEM or
-    /// DER format.
-    public convenience init<B: ContiguousBytes>(bytes: B, format: CryptoSerializationFormats) throws {
-      let ref = try createX509Ref(bytes: bytes, format: format)
-        self.init(withOwnedReference: ref!)
+    /// Create a new `Certificate` from a buffer of bytes that contains the textual encoding format known as
+    /// Privacy-Enhanced Mail (PEM) as defined in RFC 7468.
+    ///
+    /// - Parameter bytes: A buffer of bytes containg PEM encoded X.509 data.
+    public init<B: ContiguousBytes>(pem bytes: B) throws {
+        box = try X509Certificate(pem: bytes)
     }
 
-    /// Create a Certificate from a buffer of bytes in either PEM or DER format.
-    internal convenience init(bytes ptr: UnsafeRawBufferPointer, format: CryptoSerializationFormats) throws {
-        // TODO(cory):
-        // The body of this method is exactly identical to the initializer above, except for the "withUnsafeBytes" call.
-        // ContiguousBytes would have been the lowest effort way to reduce this duplication, but we can't use it without
-        // bringing Foundation in. Probably we should use Sequence where Element == UInt8 and the withUnsafeContiguousBytesIfAvailable
-        // method, but that's a much more substantial refactor. Let's do it later.
-        let bio = CCryptoBoringSSL_BIO_new_mem_buf(ptr.baseAddress, CInt(ptr.count))!
-
-        defer {
-            CCryptoBoringSSL_BIO_free(bio)
-        }
-
-        let ref: UnsafeMutablePointer<X509>?
-
-        switch format {
-        case .pem:
-            ref = CCryptoBoringSSL_PEM_read_bio_X509(bio, nil, nil, nil)
-        case .der:
-            ref = CCryptoBoringSSL_d2i_X509_bio(bio, nil)
-        }
-
-        if ref == nil {
-            throw CryptoKitError.internalBoringSSLError()
-        }
-
-        self.init(withOwnedReference: ref!)
+    /// Create a new `Certificate` from a buffer of bytes in Distinguished Encoding Rules (DER) format.
+    ///
+    /// - Parameter bytes: A buffer of bytes containg DER encoded X.509 data.
+    public init<B: ContiguousBytes>(der bytes: B) throws {
+        box = try X509Certificate(der: bytes)
     }
+
+}
+
+// MARK:- Accessing X.509 Properties
+
+extension Certificate {
 
     /// Get a sequence of the alternative names in the certificate.
     public func subjectAlternativeNames() -> SubjectAltNameSequence? {
-        guard let sanExtension = CCryptoBoringSSL_X509_get_ext_d2i(self.ref, NID_subject_alt_name, nil, nil) else {
+        guard let sanExtension = CCryptoBoringSSL_X509_get_ext_d2i(box.ref, NID_subject_alt_name, nil, nil) else {
             return nil
         }
         return SubjectAltNameSequence(nameStack: OpaquePointer(sanExtension))
@@ -142,7 +105,7 @@ public class Certificate {
     /// the *most significant* (i.e. last) instance of commonName in the subject.
     public func commonName() -> [UInt8]? {
         // No subject name is unexpected, but it gives us an easy time of handling this at least.
-        guard let subjectName = CCryptoBoringSSL_X509_get_subject_name(self.ref) else {
+        guard let subjectName = CCryptoBoringSSL_X509_get_subject_name(box.ref) else {
             return nil
         }
 
@@ -179,9 +142,6 @@ public class Certificate {
         return arr
     }
 
-    deinit {
-        CCryptoBoringSSL_X509_free(ref)
-    }
 }
 
 // MARK:- Utility Functions
@@ -195,7 +155,7 @@ extension Certificate {
     /// - returns: This certificate's `PublicKey`.
     /// - throws: If an error is encountered extracting the key.
     public func extractPublicKey() throws -> PublicKey {
-        guard let key = CCryptoBoringSSL_X509_get_pubkey(self.ref) else {
+        guard let key = CCryptoBoringSSL_X509_get_pubkey(box.ref) else {
             throw CryptoKitError.internalBoringSSLError()
         }
 
@@ -225,7 +185,7 @@ extension Certificate {
             CCryptoBoringSSL_BIO_free(bio)
         }
 
-        let rc = CCryptoBoringSSL_i2d_X509_bio(bio, self.ref)
+        let rc = CCryptoBoringSSL_i2d_X509_bio(bio, box.ref)
         guard rc == 1 else {
             throw CryptoKitError.internalBoringSSLError()
         }
@@ -243,7 +203,7 @@ extension Certificate {
 
 extension Certificate: Equatable {
     public static func ==(lhs: Certificate, rhs: Certificate) -> Bool {
-        return CCryptoBoringSSL_X509_cmp(lhs.ref, rhs.ref) == 0
+        return CCryptoBoringSSL_X509_cmp(lhs.box.ref, rhs.box.ref) == 0
     }
 }
 
